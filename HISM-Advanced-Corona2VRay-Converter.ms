@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = HISM Advanced Corona2VRay Converter
-VERSION = 1.0.2
+VERSION = 1.0.3
 AUTHOR = MastaMan
 DEV = https://3dground.net
 HELP = 
@@ -20,6 +20,9 @@ CLIENT = HISM
 [1.0.2]
 * Changed: UI as Prune style=
 * Changed: CoronaColorCorrect now converts to ColorCorrectoin=
+
+[1.0.3]
++ Added: Convert CoronaMultiMap=
 
 [ABOUT]
 
@@ -54,6 +57,9 @@ rollout _rHAC2VC_Step0  "Convert To VRay" (
 		
 		checkbox cbxConvertCoronaMappingRandomizer "CoronaMappingRandomizer" across: 2 checked: true
 		label lblConvertCoronaMappingRandomizer "-" align: #right 
+		
+		checkbox cbxConvertCoronaMultiMap "CoronaMultiMap" across: 2 checked: true
+		label lblConvertCoronaMultiMap "-" align: #right 
 	)
 	
 	button btnStart "Start" width: 260 height: 35  offset: [0, 5]
@@ -62,24 +68,24 @@ rollout _rHAC2VC_Step0  "Convert To VRay" (
 		cbxRemoveCoronaColorCorrect,
 		cbxConvertCoronaTriplanar,
 		cbxConvertCoronaAO,
-		cbxConvertCoronaMappingRandomizer
+		cbxConvertCoronaMappingRandomizer,
+		cbxConvertCoronaMultiMap
 	)
 	
 	local labels = #(
 		lblRemoveCoronaColorCorrect,
 		lblConvertCoronaTriplanar,
 		lblConvertCoronaAO,
-		lblConvertCoronaMappingRandomizer
+		lblConvertCoronaMappingRandomizer,
+		lblConvertCoronaMultiMap
 	)
 	
 	fn clearLabels = (
 		for i in labels do i.caption = "-"
 	)
 	
-	fn processedMessage t p = (
-		local m = (t as string) + ": " + (p as string)
-		messageBox m title: "Scene processed!"
-		return m
+	fn boost = (
+		if (((maxVersion())[1] / 1000) >= 13) do windows.processPostedMessages() 
 	)
 	
 	fn processCoronaMappingRandomizer = (
@@ -155,6 +161,65 @@ rollout _rHAC2VC_Step0  "Convert To VRay" (
 			)
 			
 			replaceInstances i d
+			processed += 1
+		)
+		
+		return processed as string
+	)
+	
+	fn processCoronaMultiMap = (
+		local processed = 0
+		
+		for m in getClassInstances CoronaMultiMap do (
+			print "aaaa"
+			
+			local mm = VRayMultiSubTex()
+			if (m.randomizeMaterialId) do mm.from_id = 0			
+			if (m.randomizeObjectGBuffer) do mm.from_id = 1
+				
+			if (m.randomizeInstance) do (
+				mm.from_id = 12
+				mm.random_by_instance_id = true
+			)
+			
+			if (m.randomizePolygon) do (
+				mm.from_id = 12
+				mm.random_by_face_mtl_id = true
+			)
+			
+			if (m.randomizeMeshElement) do (
+				mm.from_id = 12
+				mm.random_by_element = true
+			)
+			
+			if (m.randomizeMeshElement) do (
+				mm.from_id = 12
+				mm.random_by_element = true
+			)
+			
+			if (m.randomizeTileId) do (
+				mm.from_id = 12
+				mm.random_by_tile = true
+			)
+			
+			mm.seed = m.seed
+			mm.random_hue = m.hueRandom
+			mm.random_saturation = m.saturationRandom
+			mm.random_gamma = m.gammaRandom
+			
+			--m.randomizeSubPrimitive
+			--m.randomizePolygon
+			--m.randomizeDecal			
+			--m.randomizeMaterialGBuffer			
+			--m.randomizeMaterialName
+			
+			mm.texmap_id.count = m.items
+			for i in 1 to m.texmaps.count do (				
+				mm.texmap[i] = m.texmaps[i]
+			)
+			
+			replaceInstances m mm
+			
 			processed += 1
 		)
 		
@@ -257,21 +322,31 @@ rollout _rHAC2VC_Step0  "Convert To VRay" (
 		if(cbxRemoveCoronaColorCorrect.checked) do (
 			local c = processCoronaColorCorrect()
 			lblRemoveCoronaColorCorrect.caption = c
+			boost()
 		)
 		
 		if(cbxConvertCoronaTriplanar.checked) do (
 			local c = processMultiOutputChannel type: #CoronaTriplanar
 			lblConvertCoronaTriplanar.caption = c
+			boost()
 		)
 		
 		if(cbxConvertCoronaAO.checked) do (
 			local c = processCoronaAO()
 			lblConvertCoronaAO.caption = c
+			boost()
 		)
 		
 		if(cbxConvertCoronaMappingRandomizer.checked) do (
 			local c = processCoronaMappingRandomizer()
 			lblConvertCoronaMappingRandomizer.caption = c
+			boost()
+		)
+		
+		if(cbxConvertCoronaMultiMap.checked) do (
+			local c = processCoronaMultiMap()
+			lblConvertCoronaMultiMap.caption = c
+			boost()
 		)
 	)
 )
