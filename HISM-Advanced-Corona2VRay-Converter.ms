@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = HISM Advanced Corona2VRay Converter
-VERSION = 1.0.1
+VERSION = 1.0.2
 AUTHOR = MastaMan
 DEV = https://3dground.net
 HELP = 
@@ -17,6 +17,10 @@ CLIENT = HISM
 * Changed: About section=
 - BugFix: Small fixes=
 
+[1.0.2]
+* Changed: UI as Prune style=
+* Changed: CoronaColorCorrect now converts to ColorCorrectoin=
+
 [ABOUT]
 
 Script converts complex materials or MultiOutputChannelTexmapToTexmap to more simplier=
@@ -30,51 +34,46 @@ global _rHAC2VC_Step0
 global _rHAC2VC_About
 
 rollout _rHAC2VC_Step0  "Convert To VRay" (
-	local __VRAY_TEXMAPS = #(
-		#texmap_diffuse, 
-		#texmap_reflection, 
-		#texmap_refraction, 
-		#texmap_bump, 
-		#texmap_reflectionGlossiness, 
-		#texmap_refractionGlossiness, 
-		#texmap_refractionIOR, 
-		#texmap_displacement, 
-		#texmap_translucent, 
-		#texmap_translucency_amount, 
-		#texmap_environment, 
-		#texmap_hilightGlossiness, 
-		#texmap_reflectionIOR, 
-		#texmap_opacity, 
-		#texmap_roughness, 
-		#texmap_anisotropy, 
-		#texmap_anisotropy_rotation, 
-		#texmap_refraction_fog, 
-		#texmap_refraction_fog_depth, 
-		#texmap_self_illumination, 
-		#texmap_gtr_tail_falloff, 
-		#texmap_metalness, 
-		#texmap_sheen, 
-		#texmap_sheen_glossiness, 
-		#texmap_coat_color, 
-		#texmap_coat_amount, 
-		#texmap_coat_glossiness, 
-		#texmap_coat_ior, 
-		#texmap_coat_bump, 
-		#texmap_thinFilm_thickness, 
-		#texmap_thinFilm_ior
+	local texMaps = #(
+		#(VRayMtl, #(#texmap_diffuse, #texmap_reflection, #texmap_refraction, #texmap_bump, #texmap_reflectionGlossiness, #texmap_refractionGlossiness, #texmap_refractionIOR, #texmap_displacement, #texmap_translucent, #texmap_translucency_amount, #texmap_environment, #texmap_hilightGlossiness, #texmap_reflectionIOR, #texmap_opacity, #texmap_roughness, #texmap_anisotropy, #texmap_anisotropy_rotation, #texmap_refraction_fog, #texmap_refraction_fog_depth, #texmap_self_illumination, #texmap_gtr_tail_falloff, #texmap_metalness, #texmap_sheen, #texmap_sheen_glossiness, #texmap_coat_color, #texmap_coat_amount, #texmap_coat_glossiness, #texmap_coat_ior, #texmap_coat_bump, #texmap_thinFilm_thickness, #texmap_thinFilm_ior)),
+		#(CoronaLegacyMtl, #(#texmapDiffuse, #texmapReflect, #texmapReflectGlossiness, #texmapRefract, #texmapRefractGlossiness, #texmapOpacity, #texmapBump, #texmapTranslucency, #texmapReflectAnisotropy, #texmapReflectAnisotropyRotation, #texmapIor, #texmapFresnelIor, #texmapDisplace, #texmapReflectBgOverride, #texmapRefractBgOverride, #texmapSelfIllum, #texmapTranslucencyFraction, #texmapAbsorption, #texmapScatterColor, #texmapSssAmount, #texmapSssRadius, #texmapSssScatterColor))
 	)
 
-	group "MultiOutput Maps" (
-		button btnRemoveCoronaColorCorrect "Remove CoronaColorCorrect" width: 260 height: 28
-		button btnConvertCoronaTriplanar "Convert CoronaTriplanar" width: 260 height: 28
+	group "Conversion Options" (
+		button btnSelectAll "Select All" width: 125 align: #left across: 2
+		button btnDeslectAll "Deselect All" width: 125 align: #right
+		
+		checkbox cbxRemoveCoronaColorCorrect "CoronaColorCorrect" align: #left across: 2 offset: [0, 5] checked: true
+		label lblRemoveCoronaColorCorrect "-" align: #right offset: [0, 5]
+		
+		checkbox cbxConvertCoronaTriplanar "CoronaTriplanar" across: 2 checked: true
+		label lblConvertCoronaTriplanar "-" align: #right
+		
+		checkbox cbxConvertCoronaAO "CoronaAO" across: 2 checked: true
+		label lblConvertCoronaAO "-" align: #right
+		
+		checkbox cbxConvertCoronaMappingRandomizer "CoronaMappingRandomizer" across: 2 checked: true
+		label lblConvertCoronaMappingRandomizer "-" align: #right 
 	)
 	
-	group "AO Maps" (
-		button btnConvertCoronaAO "Convert CoronaAO" width: 260 height: 28
+	button btnStart "Start" width: 260 height: 35  offset: [0, 5]
+	
+	local checkboxes = #(
+		cbxRemoveCoronaColorCorrect,
+		cbxConvertCoronaTriplanar,
+		cbxConvertCoronaAO,
+		cbxConvertCoronaMappingRandomizer
 	)
 	
-	group "Randomizer Maps" (
-		button btnConvertCoronaMappingRandomizer "Convert CoronaMappingRandomizer" width: 260 height: 28
+	local labels = #(
+		lblRemoveCoronaColorCorrect,
+		lblConvertCoronaTriplanar,
+		lblConvertCoronaAO,
+		lblConvertCoronaMappingRandomizer
+	)
+	
+	fn clearLabels = (
+		for i in labels do i.caption = "-"
 	)
 	
 	fn processedMessage t p = (
@@ -133,7 +132,7 @@ rollout _rHAC2VC_Step0  "Convert To VRay" (
 			)
 		)
 		
-		return processedMessage "CoronaMappingRandomizer" processed	
+		return processed as string	
 	)
 		
 	fn processCoronaAO = (
@@ -159,73 +158,121 @@ rollout _rHAC2VC_Step0  "Convert To VRay" (
 			processed += 1
 		)
 		
-		return processedMessage "CoronaAO" processed
+		return processed as string
+	)
+	
+	fn processCoronaColorCorrect = (
+		local processed = 0
+		 
+		for m in getClassInstances CoronaColorCorrect do (
+			local cc = ColorCorrection()
+			cc.brightness = m.brightness
+			cc.contrast = m.contrast
+			cc.saturation = m.saturation
+			cc.hueShift = m.hue
+			cc.tint = m.tint
+			--cc.gamma = m.gamma
+			
+			cc.map = m.inputTexmap
+			replaceInstances m cc
+			
+			processed += 1
+		)
+		
+		return processed as string
 	)
 	
 	fn processMultiOutputChannel type: #CoronaColorCorrect = (
 		local processed = 0
 		
-		for m in getClassInstances VRayMtl do (
-			local usedTriplanar = #()
+		for texMap in texMaps do (
+			local texMapType = texMap[1]
+			local texMapProps = texMap[2]
 			
-			for p in __VRAY_TEXMAPS do (
-				local v = getProperty m p
-				if (v == undefined or classOf v != MultiOutputChannelTexmapToTexmap) do continue
-				local id = v.outputChannelIndex	
-				if (id == undefined) do continue
+			for m in getClassInstances texMapType do (				
+				local usedTriplanar = #()
 				
-				-- For Corona Color Correct
-				if (type == #CoronaColorCorrect and classOf v.sourceMap == CoronaColorCorrect) do (
-					local t = case id of (
-						1: v.sourceMap.inputTexmap
-						default: v.sourceMap.additionalInputTexmap[id - 1]
-					)	
-					setProperty m p t
+				for p in texMapProps do (
+					local v = getProperty m p
 					
-					processed += 1
-				)	
-				
-				-- For Corona Triplanar
-				if (type == #CoronaTriplanar and classOf v.sourceMap == CoronaTriplanar) do (
-					local t = case id of (
-						1: #(v.sourceMap.texmapX, v.sourceMap.texmapY, v.sourceMap.texmapZ)
-						default: #(v.sourceMap.additionalTexmapX[id - 1], v.sourceMap.additionalTexmapy[id - 1], v.sourceMap.additionalTexmapZ[id - 1])
-					)	
+					if (v == undefined) do continue
 					
-					if (usedTriplanar[id] != undefined) then (
-						setProperty m p usedTriplanar[id]
-					) else (
-						local vtp = VRayTriplanarTex()
-						vtp.texture = t[1]
-						vtp.texture_y = t[2]
-						vtp.texture_z = t[3]
+					-- Process MultiChannel
+					if (classOf v != MultiOutputChannelTexmapToTexmap) do continue
+					local id = v.outputChannelIndex	
+					if (id == undefined) do continue
+					
+					-- For Corona Color Correct
+					if (type == #CoronaColorCorrect and classOf v.sourceMap == CoronaColorCorrect) do (
+						local t = case id of (
+							1: v.sourceMap.inputTexmap
+							default: v.sourceMap.additionalInputTexmap[id - 1]
+						)	
+						setProperty m p t
 						
-						setProperty m p vtp
-						usedTriplanar[id] = vtp
-					)
+						processed += 1
+						continue
+					)	
 					
-					processed += 1					
-				)			
+					-- For Corona Triplanar
+					if (type == #CoronaTriplanar and classOf v.sourceMap == CoronaTriplanar) do (
+						local t = case id of (
+							1: #(v.sourceMap.texmapX, v.sourceMap.texmapY, v.sourceMap.texmapZ)
+							default: #(v.sourceMap.additionalTexmapX[id - 1], v.sourceMap.additionalTexmapy[id - 1], v.sourceMap.additionalTexmapZ[id - 1])
+						)	
+						
+						if (usedTriplanar[id] != undefined) then (
+							setProperty m p usedTriplanar[id]
+						) else (
+							local vtp = VRayTriplanarTex()
+							vtp.texture = t[1]
+							vtp.texture_y = t[2]
+							vtp.texture_z = t[3]
+							
+							setProperty m p vtp
+							usedTriplanar[id] = vtp
+						)
+						
+						processed += 1	
+						continue						
+					)			
+				)
 			)
 		)
 		
-		return processedMessage type processed
+		return processed as string
 	)
 	
-	on btnRemoveCoronaColorCorrect pressed do (
-		processMultiOutputChannel type: #CoronaColorCorrect
+	on btnSelectAll pressed do (
+		for i in checkboxes do i.checked = true
 	)
 	
-	on btnConvertCoronaTriplanar pressed do (
-		processMultiOutputChannel type: #CoronaTriplanar
+	on btnDeslectAll pressed do (
+		for i in checkboxes do i.checked = false
 	)
 	
-	on btnConvertCoronaAO pressed do (
-		processCoronaAO()
-	)
-	
-	on btnConvertCoronaMappingRandomizer pressed do (
-		processCoronaMappingRandomizer()
+	on btnStart pressed do (
+		clearLabels()
+		
+		if(cbxRemoveCoronaColorCorrect.checked) do (
+			local c = processCoronaColorCorrect()
+			lblRemoveCoronaColorCorrect.caption = c
+		)
+		
+		if(cbxConvertCoronaTriplanar.checked) do (
+			local c = processMultiOutputChannel type: #CoronaTriplanar
+			lblConvertCoronaTriplanar.caption = c
+		)
+		
+		if(cbxConvertCoronaAO.checked) do (
+			local c = processCoronaAO()
+			lblConvertCoronaAO.caption = c
+		)
+		
+		if(cbxConvertCoronaMappingRandomizer.checked) do (
+			local c = processCoronaMappingRandomizer()
+			lblConvertCoronaMappingRandomizer.caption = c
+		)
 	)
 )
 
